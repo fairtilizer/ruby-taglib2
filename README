@@ -1,0 +1,178 @@
+ruby-taglib2 is a compiled extension to ruby that provides access to the TagLib
+library.  ruby-taglib2 optionally uses the Mahoro library when available for
+much more accurate detection of file formats (TagLib without Mahoro just looks
+at the last few characters of the file name, while Mahoro looks at the
+content).
+
+ruby-taglib and ruby-taglib2: http://www.hakubi.us/ruby-taglib/
+
+TagLib: http://developer.kde.org/~wheeler/taglib.html
+
+Mahoro: http://mahoro.rubyforge.org/
+
+#############
+Installation#
+#############
+
+gem install ruby-taglib2 (gemcutter.org)
+
+#######
+Modules
+#######
+
+TagLib2
+
+#######
+Classes
+#######
+
+TagLib2::File - The central class that users of ruby-taglib2 will always use
+TagLib2::Image - Stores information about images embedded in tags, can be gotten
+                 through methods of TagLib2::File
+TagLib2::FileRef - Internal use only
+TagLib2::BadFile - Exception thrown when the file passed to TagLib2::File's
+                   initializer cannot be loaded
+
+#######
+Methods
+#######
+
+All strings are to be in UTF8 format.  Set KCODE to u when necessary.
+
+TagLib2::File#title(string)
+TagLib2::File#title=(string) - Get and set the title of a file
+
+TagLib2::File#artist(string)
+TagLib2::File#artist=(string) - Get and set the artist of a file
+
+TagLib2::File#album(string)
+TagLib2::File#album=(string) - Get and set the album the file is from
+
+TagLib2::File#comment(string)
+TagLib2::File#comment=(string) - Get and set a comment about the file
+
+TagLib2::File#genre(string)
+TagLib2::File#genre=(string) - Get and set a comment about the file
+
+TagLib2::File#year(num)
+TagLib2::File#year=(num) - Get and set the year of the file
+
+TagLib2::File#track(num)
+TagLib2::File#track=(num) - Get and set the the track number of the file on the
+                            album
+
+TagLib2::File#bitrate
+TagLib2::File#sampleRate
+TagLib2::File#sample_rate
+TagLib2::File#channels
+TagLib2::File#length - Get properties of the audio in the file
+
+TagLib2::File#save - Save all changes to the tag
+
+TagLib2::File#each_image
+TagLib2::File#eachImage - Iterator over all images stored in the file's tag
+
+TagLib2::File#image_count
+TagLib2::File#imageCount - Number of images in the file's tag
+
+TagLib2::File#image(num) - Returns image #num in order from eachImage
+
+TagLib2::File#add_image(type, mimeType, description, data)
+TagLib2::File#addImage(type, mimeType, description, data) - Add an image
+                           type is an integer, the rest are strings.  For
+                           a remote image, set data to nil and place the
+                           URL in mimeType.  Otherwise mimeType should be
+                           image/jpeg or image/png.  description may be set
+                           nil as well.
+
+TagLib2::File#remove_image(image)
+TagLib2::File#removeImage(image) - Remove an image from the tag, as returned by
+                                   #image
+
+TagLib2::Image#type - Returns a number of the type
+
+TagLib2::Image#description - Returns a string of the description
+
+TagLib2::Image#mime_type
+TagLib2::Image#mimeType - Returns a the mimeType of the data, or a URL
+
+TagLib2::Image#data - Returns the actual image data, if mimeType is not a URL
+
+######
+Images
+######
+
+Image are only supported right now when in ID3v2 tags.  Here is a list of what
+the picture type numbers mean:
+
+Picture type:  0x00  Other
+               0x01  32x32 pixels 'file icon' (PNG only)
+               0x02  Other file icon
+               0x03  Cover (front)
+               0x04  Cover (back)
+               0x05  Leaflet page
+               0x06  Media (e.g. label side of CD)
+               0x07  Lead artist/lead performer/soloist
+               0x08  Artist/performer
+               0x09  Conductor
+               0x0A  Band/Orchestra
+               0x0B  Composer
+               0x0C  Lyricist/text writer
+               0x0D  Recording Location
+               0x0E  During recording
+               0x0F  During performance
+               0x10  Movie/video screen capture
+               0x11  A bright coloured fish
+               0x12  Illustration
+               0x13  Band/artist logotype
+               0x14  Publisher/Studio logotype
+
+Except where noted, all images should be of type image/jpeg or image/png.
+
+#############
+Sample of use
+#############
+
+require 'taglib2'
+
+f = TagLib2::File.new(ARGV[0])
+
+puts "Title: #{f.title}"
+puts "Comment: #{f.comment}"
+puts "Artist: #{f.artist}"
+puts "Album: #{f.album}"
+puts "Length: #{f.length}"
+puts "Sample Rate: #{f.sampleRate}"
+puts "Image Count: #{f.imageCount}"
+if f.imageCount > 0
+	puts "Image 0 MimeType: #{f.image(0).mimeType}"
+	puts "Image 0 Type: #{f.image(0).type}"
+	puts "Image 0 Description: #{f.image(0).description}"
+end
+
+if ARGV[1] == '-setTitle'
+	puts "Setting Title to #{ARGV[2]}"
+	f.title = ARGV[2]
+	f.save
+end
+
+if ARGV[1] == '-dumpImage'
+	puts "Dumping image"
+	File::open(ARGV[3], 'w') do |file|
+		file.write(f.image(ARGV[2].to_i).data)
+	end
+	f.save
+end
+
+if ARGV[1] == '-removeImage'
+	puts "Removing image #{ARGV[2]}"
+	f.removeImage(f.image(ARGV[2].to_i))
+	f.save
+end
+
+if ARGV[1] == '-addImage'
+	puts "Adding image"
+	puts "f.addImage(#{ARGV[2].to_i}, #{ARGV[3]}, #{ARGV[4]}, IO::read(#{ARGV[5]}))"
+	f.addImage(ARGV[2].to_i, ARGV[3], ARGV[4], IO::read(ARGV[5]))
+	f.save
+end
